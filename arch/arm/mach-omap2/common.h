@@ -156,6 +156,16 @@ void omap3_intc_resume_idle(void);
 void omap2_intc_handle_irq(struct pt_regs *regs);
 void omap3_intc_handle_irq(struct pt_regs *regs);
 
+struct device_node;
+#ifdef CONFIG_OF
+int __init intc_of_init(struct device_node *node, struct device_node *parent);
+#else
+int __init intc_of_init(struct device_node *node, struct device_node *parent)
+{
+	return 0;
+}
+#endif
+
 /*
  * wfi used in low power code. Directly opcode is used instead
  * of instruction to avoid mulit-omap build break
