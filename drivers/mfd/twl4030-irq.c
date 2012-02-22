@@ -27,6 +27,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
+#include <linux/export.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -620,9 +621,8 @@ static irqreturn_t handle_twl4030_sih(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static unsigned twl4030_irq_next;
-
-/* returns the first IRQ used by this SIH bank,
+/*
+ * returns the first IRQ used by this SIH bank,
  * or negative errno
  */
 int twl4030_sih_setup(int module)
@@ -632,29 +632,29 @@ int twl4030_sih_setup(int module)
 	struct sih_agent	*agent;
 	int			i, irq;
 	int			status = -EINVAL;
-	unsigned		irq_base = twl4030_irq_next;
+	int			irq_base;
 
 	/* only support modules with standard clear-on-read for now */
-	for (sih_mod = 0, sih = sih_modules;
-			sih_mod < nr_sih_modules;
+	for (sih_mod = 0, sih = sih_modules; sih_mod < nr_sih_modules;
 			sih_mod++, sih++) {
 		if (sih->module == module && sih->set_cor) {
-			if (!WARN((irq_base + sih->bits) > NR_IRQS,
-					"irq %d for %s too big\n",
-					irq_base + sih->bits,
-					sih->name))
-				status = 0;
+			status = 0;
 			break;
 		}
 	}
+
 	if (status < 0)
-		return status;
+	       return status;
 
 	agent = kzalloc(sizeof *agent, GFP_KERNEL);
 	if (!agent)
 		return -ENOMEM;
 
-	status = 0;
+	irq_base = irq_alloc_descs(-1, 0, sih->bits, 0);
+	if (irq_base < 0) {
+		pr_err("twl4030: %s: failed to alloc irq_descs\n", sih->name);
+		return irq_base;
+	}
 
 	agent->irq_base = irq_base;
 	agent->sih = sih;
@@ -671,8 +671,6 @@ int twl4030_sih_setup(int module)
 		activate_irq(irq);
 	}
 
-	twl4030_irq_next += i;
-
 	/* replace generic PIH handler (handle_simple_irq) */
 	irq = sih_mod + twl4030_irq_base;
 	irq_set_handler_data(irq, agent);
@@ -681,7 +679,7 @@ int twl4030_sih_setup(int module)
 				      agent->irq_name ?: sih->name, NULL);
 
 	pr_info("twl4030: %s (irq %d) chaining IRQs %d..%d\n", sih->name,
-			irq, irq_base, twl4030_irq_next - 1);
+			irq, irq_base, irq_base + i - 1);
 
 	return status < 0 ? status : irq_base;
 }
@@ -725,9 +723,8 @@ int twl4030_init_irq(int irq_num, unsigned irq_base, unsigned irq_end)
 		irq_set_nested_thread(i, 1);
 		activate_irq(i);
 	}
-	twl4030_irq_next = i;
 	pr_info("twl4030: %s (irq %d) chaining IRQs %d..%d\n", "PIH",
-			irq_num, irq_base, twl4030_irq_next - 1);
+			irq_num, irq_base, irq_end);
 
 	/* ... and the PWR_INT module ... */
 	status = twl4030_sih_setup(TWL4030_MODULE_INT);
