@@ -18,4 +18,12 @@
 		compatible = "ti,twl4030-rtc";
 		interrupts = <11>;
 	};
+
+	twl_gpio: gpio {
+		compatible = "ti,twl4030-gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+	};
 };
