@@ -1174,17 +1174,15 @@ static int twl_remove(struct i2c_client *client)
 	return 0;
 }
 
-/* NOTE:  this driver only handles a single twl4030/tps659x0 chip */
+/* NOTE: This driver only handles a single twl4030/tps659x0 chip */
 static int __devinit
 twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	int				irq_base;
-	int				status;
-	unsigned			i;
 	struct twl4030_platform_data	*pdata = client->dev.platform_data;
 	struct device_node		*node = client->dev.of_node;
-	u8 temp;
-	int ret = 0;
+	int				irq_base = 0;
+	int				status;
+	unsigned			i;
 
 	if (node && !pdata) {
 		/*
@@ -1214,12 +1212,12 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	for (i = 0; i < TWL_NUM_SLAVES; i++) {
-		struct twl_client	*twl = &twl_modules[i];
+		struct twl_client *twl = &twl_modules[i];
 
 		twl->address = client->addr + i;
-		if (i == 0)
+		if (i == 0) {
 			twl->client = client;
-		else {
+		} else {
 			twl->client = i2c_new_dummy(client->adapter,
 					twl->address);
 			if (!twl->client) {
@@ -1231,7 +1229,9 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		}
 		mutex_init(&twl->xfer_lock);
 	}
+
 	inuse = true;
+
 	if ((id->driver_data) & TWL6030_CLASS) {
 		twl_id = TWL6030_CLASS_ID;
 		twl_map = &twl6030_map[0];
@@ -1245,8 +1245,8 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	/* read TWL IDCODE Register */
 	if (twl_id == TWL4030_CLASS_ID) {
-		ret = twl_read_idcode_register();
-		WARN(ret < 0, "Error: reading twl_idcode register value\n");
+		status = twl_read_idcode_register();
+		WARN(status < 0, "Error: reading twl_idcode register value\n");
 	}
 
 	/* load power event scripts */
@@ -1268,19 +1268,22 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		}
 	}
 
-	/* Disable TWL4030/TWL5030 I2C Pull-up on I2C1 and I2C4(SR) interface.
+	/*
+	 * Disable TWL4030/TWL5030 I2C Pull-up on I2C1 and I2C4(SR) interface.
 	 * Program I2C_SCL_CTRL_PU(bit 0)=0, I2C_SDA_CTRL_PU (bit 2)=0,
 	 * SR_I2C_SCL_CTRL_PU(bit 4)=0 and SR_I2C_SDA_CTRL_PU(bit 6)=0.
 	 */
-
 	if (twl_class_is_4030()) {
+		u8 temp;
+
 		twl_i2c_read_u8(TWL4030_MODULE_INTBR, &temp, REG_GPPUPDCTR1);
 		temp &= ~(SR_I2C_SDA_CTRL_PU | SR_I2C_SCL_CTRL_PU | \
-		I2C_SDA_CTRL_PU | I2C_SCL_CTRL_PU);
+			I2C_SDA_CTRL_PU | I2C_SCL_CTRL_PU);
 		twl_i2c_write_u8(TWL4030_MODULE_INTBR, temp, REG_GPPUPDCTR1);
 	}
 
 	status = -ENODEV;
+
 	if (node)
 		status = of_platform_populate(node, NULL, NULL, &client->dev);
 	if (status)
@@ -1289,6 +1292,7 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 fail:
 	if (status < 0)
 		twl_remove(client);
+
 	return status;
 }
 
