@@ -137,3 +137,7 @@
 	cs1-used;
 	device-handle = <&elpida_ECB240ABACN>;
 };
+
+&twl_usb_comparator {
+	usb-supply = <&vusb>;
+};
