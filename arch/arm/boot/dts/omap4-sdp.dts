@@ -80,6 +80,32 @@
 		};
 	};
 
+	pwmleds {
+		compatible = "pwm-leds";
+		kpad {
+			label = "omap4::keypad";
+			pwms = <&twl_pwm 0 7812500>;
+			max-brightness = <127>;
+		};
+
+		charging {
+			label = "omap4:green:chrg";
+			pwms = <&twl_pwmled 0 7812500>;
+			max-brightness = <255>;
+		};
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&twl_pwm 1 7812500>;
+		brightness-levels = <
+				0 10 20 30 40
+				50 60 70 80 90
+				100 110 120 127
+				>;
+		default-brightness-level = <13>;
+	};
+
 	sound {
 		compatible = "ti,abe-twl6040";
 		ti,model = "SDP4430";
